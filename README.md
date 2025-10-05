@@ -139,3 +139,48 @@ SELECT sale_date,
 FROM transactions
 ORDER BY sale_date;
 ```
+
+
+## 🧮 Results Analysis  
+
+### 🔹 Descriptive – What Happened?  
+- Sales steadily increased quarter by quarter.  
+- Top products were concentrated in the **Beverages** category.  
+- **25%** of customers contributed to nearly **70%** of total revenue.  
+
+---
+
+### 🔹 Diagnostic – Why Did It Happen?  
+- **Kigali** and **Huye** regions showed stronger growth due to marketing campaigns.  
+- High-value customers are mainly **repeat buyers**.  
+
+---
+
+### 🔹 Prescriptive – What Next?  
+- Expand marketing in regions with **low performance**.  
+- Offer **loyalty programs** to top quartile customers.  
+- Increase stock for **top-selling categories**.  
+
+---
+
+## 📚 References  
+- [Oracle PL/SQL Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/)   
+- [W3Schools SQL OVER() Examples](https://www.w3schools.com/sql/sql_over.asp)    
+- [Oracle Live SQL Demos](https://livesql.oracle.com/)  
+- [TutorialsPoint PL/SQL Advanced Topics](https://www.tutorialspoint.com/plsql/index.htm)  
+ 
+- **Academic Lecture Notes (AUCA 2025)**  
+
+---
+
+## 🏁 Conclusion  
+This project demonstrates how **PL/SQL Window Functions** can transform raw sales data into **actionable insights**.  
+By combining **ranking**, **running totals**, **growth tracking**, and **segmentation**, businesses gain a **complete analytical picture** of customer and sales performance.  
+
+---
+
+**📌 Author:** MANZI Erick Kevin  
+**📚 Course:** Database Development with PL/SQL  
+**🏫 Institution:** Adventist University of Central Africa  
+
+
