@@ -207,8 +207,7 @@ ORDER BY product_id, month_start;
 
 ## 📚 References  
 - [Oracle PL/SQL Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/)   
-- [W3Schools SQL OVER() Examples](https://www.w3schools.com/sql/sql_over.asp)    
-- [Oracle Live SQL Demos](https://livesql.oracle.com/)  
+- [W3Schools SQL OVER()](https://www.w3schools.com/sql/sql_over.asp)     
 - [TutorialsPoint PL/SQL Advanced Topics](https://www.tutorialspoint.com/plsql/index.htm)  
  
 - **Academic Lecture Notes (AUCA 2025)**  
