@@ -75,28 +75,67 @@ By applying PL/SQL window functions, we extract:
 ALTER SESSION SET CONTAINER = plsql_window_functions;
 
 -- Create user and grant privileges
-CREATE USER kevin IDENTIFIED BY password;
-GRANT CONNECT, RESOURCE, DBA TO kevin;
-GRANT UNLIMITED TABLESPACE TO kevin;
-
-
-CREATE TABLE customers (
-  customer_id NUMBER PRIMARY KEY,
-  name VARCHAR2(100),
-  region VARCHAR2(100)
-);
-
-CREATE TABLE products (
-  product_id NUMBER PRIMARY KEY,
-  name VARCHAR2(100),
-  category VARCHAR2(100)
-);
-
-CREATE TABLE transactions (
-  transaction_id NUMBER PRIMARY KEY,
-  customer_id NUMBER REFERENCES customers(customer_id),
-  product_id NUMBER REFERENCES products(product_id),
-  sale_date DATE,
-  amount NUMBER(10,2)
-);
-
+CREATE USER kevin IDENTIFIED BY 123;
+```
+### ✅ Window Functions Implemented
+1. Ranking Functions - Top Customers
+```sql
+SELECT customer_id, 
+       SUM(amount) AS total_sales,
+       RANK() OVER (ORDER BY SUM(amount) DESC) AS sales_rank
+FROM transactions
+GROUP BY customer_id;
+```
+2. Ranking Functions - Top Products by Region
+```sql
+SELECT p.region,
+       pr.name AS product_name,
+       SUM(t.amount) AS region_sales,
+       RANK() OVER (PARTITION BY p.region ORDER BY SUM(t.amount) DESC) AS regional_rank
+FROM transactions t
+JOIN customers p ON t.customer_id = p.customer_id
+JOIN products pr ON t.product_id = pr.product_id
+GROUP BY p.region, pr.name;
+```
+3. Aggregate with Window Frame - Running Total
+```sql
+SELECT sale_date, 
+       amount,
+       SUM(amount) OVER (ORDER BY sale_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM transactions
+ORDER BY sale_date;
+```
+4. Navigation Functions - Month-over-Month Growth
+```sql
+SELECT sale_date, 
+       amount,
+       LAG(amount) OVER (ORDER BY sale_date) AS prev_sale,
+       ROUND(
+           (amount - LAG(amount) OVER (ORDER BY sale_date)) / 
+           LAG(amount) OVER (ORDER BY sale_date) * 100, 2
+       ) AS growth_percent
+FROM transactions
+ORDER BY sale_date;
+```
+5. Distribution Functions - Customer Quartiles
+```sql
+SELECT customer_id, 
+       SUM(amount) AS total_spent,
+       NTILE(4) OVER (ORDER BY SUM(amount) DESC) AS quartile,
+       CASE 
+           WHEN NTILE(4) OVER (ORDER BY SUM(amount) DESC) = 1 THEN 'Platinum'
+           WHEN NTILE(4) OVER (ORDER BY SUM(amount) DESC) = 2 THEN 'Gold' 
+           WHEN NTILE(4) OVER (ORDER BY SUM(amount) DESC) = 3 THEN 'Silver'
+           ELSE 'Bronze'
+       END AS customer_segment
+FROM transactions
+GROUP BY customer_id;
+```
+6. Moving Average - 3-Month Rolling Average
+```sql
+SELECT sale_date, 
+       amount,
+       AVG(amount) OVER (ORDER BY sale_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg_3month
+FROM transactions
+ORDER BY sale_date;
+```
