@@ -78,66 +78,107 @@ ALTER SESSION SET CONTAINER = plsql_window_functions;
 CREATE USER kevin IDENTIFIED BY 123;
 ```
 ### ✅ Window Functions Implemented
-1. Ranking Functions - Top Customers
+1. Total revenue per customer for 2024 with ranking functionss
 ```sql
-SELECT customer_id, 
-       SUM(amount) AS total_sales,
-       RANK() OVER (ORDER BY SUM(amount) DESC) AS sales_rank
-FROM transactions
-GROUP BY customer_id;
+SELECT
+  customer_id,
+  name,
+  total_rev,
+  ROW_NUMBER() OVER (ORDER BY total_rev DESC)         AS row_num,
+  RANK()       OVER (ORDER BY total_rev DESC)         AS rnk,
+  DENSE_RANK() OVER (ORDER BY total_rev DESC)         AS dense_rnk,
+  PERCENT_RANK() OVER (ORDER BY total_rev DESC)       AS pct_rank
+FROM (
+  SELECT c.customer_id, c.name, NVL(SUM(t.amount),0) AS total_rev
+  FROM customers c
+  LEFT JOIN transactions t ON c.customer_id = t.customer_id
+    AND t.sale_date BETWEEN TO_DATE('2024-01-01','YYYY-MM-DD') AND TO_DATE('2024-12-31','YYYY-MM-DD')
+  GROUP BY c.customer_id, c.name
+) x
+ORDER BY total_rev DESC;
 ```
-2. Ranking Functions - Top Products by Region
+2. Monthly revenue per region with running total
 ```sql
-SELECT p.region,
-       pr.name AS product_name,
-       SUM(t.amount) AS region_sales,
-       RANK() OVER (PARTITION BY p.region ORDER BY SUM(t.amount) DESC) AS regional_rank
-FROM transactions t
-JOIN customers p ON t.customer_id = p.customer_id
-JOIN products pr ON t.product_id = pr.product_id
-GROUP BY p.region, pr.name;
+WITH monthly AS (
+  SELECT
+    c.region,
+    TO_DATE(TO_CHAR(t.sale_date, 'YYYY-MM') || '-01', 'YYYY-MM-DD') AS month_start,
+    SUM(t.amount) AS monthly_revenue
+  FROM transactions t
+  JOIN customers c ON t.customer_id = c.customer_id
+  GROUP BY c.region, TO_CHAR(t.sale_date, 'YYYY-MM')
+)
+SELECT
+  region,
+  TO_CHAR(month_start,'YYYY-MM') AS ym,
+  monthly_revenue,
+  SUM(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start
+                             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total_rows,
+  SUM(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start
+                             RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total_range
+FROM monthly
+ORDER BY region, month_start;
 ```
-3. Aggregate with Window Frame - Running Total
+3. Month-over-month percent change per region
 ```sql
-SELECT sale_date, 
-       amount,
-       SUM(amount) OVER (ORDER BY sale_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
-FROM transactions
-ORDER BY sale_date;
+WITH monthly AS (
+  SELECT
+    c.region,
+    TO_DATE(TO_CHAR(t.sale_date,'YYYY-MM') || '-01', 'YYYY-MM-DD') AS month_start,
+    SUM(t.amount) AS monthly_revenue
+  FROM transactions t
+  JOIN customers c ON t.customer_id = c.customer_id
+  GROUP BY c.region, TO_CHAR(t.sale_date,'YYYY-MM')
+)
+SELECT
+  region,
+  TO_CHAR(month_start,'YYYY-MM') AS ym,
+  monthly_revenue,
+  LAG(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start) AS prev_revenue,
+  CASE 
+    WHEN LAG(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start) IS NULL THEN NULL
+    WHEN LAG(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start) = 0 THEN NULL
+    ELSE ROUND( (monthly_revenue - LAG(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start))
+                / LAG(monthly_revenue) OVER (PARTITION BY region ORDER BY month_start) * 100, 2)
+  END AS mom_pct_change
+FROM monthly
+ORDER BY region, month_start;
 ```
-4. Navigation Functions - Month-over-Month Growth
+4. Customer segmentation: quartiles by total revenue
 ```sql
-SELECT sale_date, 
-       amount,
-       LAG(amount) OVER (ORDER BY sale_date) AS prev_sale,
-       ROUND(
-           (amount - LAG(amount) OVER (ORDER BY sale_date)) / 
-           LAG(amount) OVER (ORDER BY sale_date) * 100, 2
-       ) AS growth_percent
-FROM transactions
-ORDER BY sale_date;
+SELECT
+  customer_id,
+  name,
+  total_rev,
+  NTILE(4) OVER (ORDER BY total_rev DESC) AS quartile,
+  CUME_DIST() OVER (ORDER BY total_rev DESC) AS cumedist
+FROM (
+  SELECT c.customer_id, c.name, NVL(SUM(t.amount),0) AS total_rev
+  FROM customers c
+  LEFT JOIN transactions t ON c.customer_id = t.customer_id
+    AND t.sale_date BETWEEN TO_DATE('2024-01-01','YYYY-MM-DD') AND TO_DATE('2024-12-31','YYYY-MM-DD')
+  GROUP BY c.customer_id, c.name
+) x
+ORDER BY total_rev DESC;
 ```
-5. Distribution Functions - Customer Quartiles
+5. Moving Average - 3-Month Rolling Average
 ```sql
-SELECT customer_id, 
-       SUM(amount) AS total_spent,
-       NTILE(4) OVER (ORDER BY SUM(amount) DESC) AS quartile,
-       CASE 
-           WHEN NTILE(4) OVER (ORDER BY SUM(amount) DESC) = 1 THEN 'Platinum'
-           WHEN NTILE(4) OVER (ORDER BY SUM(amount) DESC) = 2 THEN 'Gold' 
-           WHEN NTILE(4) OVER (ORDER BY SUM(amount) DESC) = 3 THEN 'Silver'
-           ELSE 'Bronze'
-       END AS customer_segment
-FROM transactions
-GROUP BY customer_id;
-```
-6. Moving Average - 3-Month Rolling Average
-```sql
-SELECT sale_date, 
-       amount,
-       AVG(amount) OVER (ORDER BY sale_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg_3month
-FROM transactions
-ORDER BY sale_date;
+WITH monthly AS (
+  SELECT
+    TO_DATE(TO_CHAR(sale_date,'YYYY-MM') || '-01', 'YYYY-MM-DD') AS month_start,
+    product_id,
+    SUM(amount) AS monthly_revenue
+  FROM transactions
+  GROUP BY TO_CHAR(sale_date,'YYYY-MM'), product_id
+)
+SELECT
+  product_id,
+  TO_CHAR(month_start,'YYYY-MM') AS ym,
+  monthly_revenue,
+  ROUND(AVG(monthly_revenue) OVER (PARTITION BY product_id ORDER BY month_start
+                                   ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),2) AS moving_avg_3mo
+FROM monthly
+ORDER BY product_id, month_start;
 ```
 
 
