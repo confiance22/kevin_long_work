@@ -63,7 +63,8 @@ By applying PL/SQL window functions, we extract:
 ---
 
 ## ER Diagram
-*(Include diagram image in repo — e.g., `er_diagram.png`)*
+<img width="1366" height="768" alt="Screenshot (616)" src="https://github.com/user-attachments/assets/12548b53-ecf4-4314-b8b6-5ec68349c464" />
+
 
 ---
 
